@@ -1,21 +1,11 @@
 mod token;
 mod lexer;
-mod parser;
-mod semantic;
-mod icg;
-mod optimizer;
-mod codegen;
 mod interpreter;
 
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use lexer::Lexer;
-use parser::Parser;
-use semantic::SemanticAnalyzer;
-use icg::ICG;
-use optimizer::Optimizer;
-use codegen::CodeGenerator;
 use interpreter::Interpreter;
 
 fn main() {
@@ -24,6 +14,10 @@ fn main() {
     if args.len() > 1 {
         // File mode
         let filename = &args[1];
+        if !filename.ends_with(".fork") {
+            eprintln!("Error: Only .fork files are supported.");
+            return;
+        }
         match fs::read_to_string(filename) {
             Ok(content) => {
                 let tokens = lexer.tokenize(&content);

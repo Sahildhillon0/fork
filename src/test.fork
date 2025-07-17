@@ -1,2 +1,5 @@
 x = 20;
-print(x);
+print("x = ",x);
+for (int y = 0; y < x; y = y + 1) {
+    print("y*7 = ",y*7);
+}

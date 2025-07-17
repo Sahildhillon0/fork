@@ -1,5 +1,5 @@
 mod context;
 mod statement;
-mod control;
+pub mod control;
 
 pub use context::Interpreter;
