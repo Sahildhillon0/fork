@@ -13,5 +13,5 @@ for (int y = 0; y < x; y = y + 1) {
 }
 while (x > 0) {
     print("x = ",x);
-    x = x - 1;
+    x = x + 1;
 }
