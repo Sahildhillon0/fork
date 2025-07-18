@@ -1,5 +1,17 @@
 x = 20;
 print("x = ",x);
 for (int y = 0; y < x; y = y + 1) {
-    print("y*7 = ",y*7);
+    if (y > 10) {
+        print("y = ",y);
+    }
+    else if (y == 10) {
+        print("y = banana");
+    }
+    else {
+        print("y < 10");
+    }
+}
+while (x > 0) {
+    print("x = ",x);
+    x = x - 1;
 }

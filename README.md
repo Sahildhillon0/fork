@@ -68,9 +68,19 @@ Type `exit` or `quit` to leave the REPL.
 ## Project Structure
 - `src/main.rs` - Entry point, file/repl handling, extension check
 - `src/interpreter/` - Interpreter logic
-  - `control/` - Control flow modules (for, loops, condition)
-  - `statement.rs` - Assignment and print logic
-  - `context.rs` - Variable storage
+  - `context.rs` - Variable storage and context management
+  - `mod.rs` - Module declarations for interpreter
+  - `control/` - Control flow modules:
+    - `mod.rs` - Control module declarations
+    - `for_loop.rs` - Implementation of `for` loops
+    - `if_else.rs` - Implementation of `if-else` constructs
+    - `loops.rs` - General loop handling
+    - `condition.rs` - Conditional logic
+  - `statement/` - Statement handling modules:
+    - `mod.rs` - Statement module declarations
+    - `assignment.rs` - Assignment statement logic
+    - `print.rs` - Print statement logic
+- `src/codegen.rs` - Code generation logic (if applicable)
 - `src/test.fork` - Example program
 
 ## Contributing

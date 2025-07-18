@@ -9,9 +9,13 @@ impl Interpreter {
         while i < tokens.len() {
             match &tokens[i] {
                 Token::Keyword(k) if k == "for" => {
-    self.interpret_for_loop(tokens, &mut i);
-    continue;
-}
+                    self.interpret_for_loop(tokens, &mut i);
+                    continue;
+                }
+                Token::Keyword(k) if k == "if" => {
+                    self.interpret_if_else(tokens, &mut i);
+                    continue;
+                }
                 Token::Keyword(k) if k == "while" => {
                     let mut j = i + 1;
                     while j < tokens.len() && matches!(&tokens[j], Token::Whitespace) { j += 1; }
@@ -45,8 +49,54 @@ impl Interpreter {
                                 if brace_count == 0 {
                                     let condition_tokens = &tokens[cond_start..cond_end];
                                     while self.eval_condition(condition_tokens) {
+    if let Some(val) = self.variables.get("x") {
+        // debug removed x = {}", val);
+    }
+
                                         let block_tokens = &tokens[block_start + 1..block_end];
-                                        self.interpret(block_tokens);
+                                        let mut k = 0;
+                                        while k < block_tokens.len() {
+                                            // Find end of next statement
+                                            let mut stmt_end = k;
+                                            let mut in_block = false;
+                                            let mut brace_count = 0;
+                                            while stmt_end < block_tokens.len() {
+                                                match &block_tokens[stmt_end] {
+                                                    Token::Symbol('{') => {
+                                                        in_block = true;
+                                                        brace_count += 1;
+                                                    }
+                                                    Token::Symbol('}') => {
+                                                        if brace_count > 0 {
+                                                            brace_count -= 1;
+                                                            if brace_count == 0 {
+                                                                stmt_end += 1;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    Token::Symbol(';') => {
+                                                        if !in_block {
+                                                            stmt_end += 1;
+                                                            break;
+                                                        }
+                                                    }
+                                                    Token::Keyword(k) if k == "for" || k == "while" => {
+                                                        break;
+                                                    }
+                                                    _ => {}
+                                                }
+                                                stmt_end += 1;
+                                            }
+                                            if stmt_end > k {
+                                                self.interpret_one_statement(&block_tokens[k..stmt_end]);
+                                            }
+                                            k = stmt_end;
+                                        }
+                                        // Ensure the last statement is executed if any tokens remain
+                                        if k < block_tokens.len() {
+                                            self.interpret_one_statement(&block_tokens[k..]);
+                                        }
                                     }
                                 }
                             }

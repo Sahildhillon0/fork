@@ -2,63 +2,15 @@
 use crate::token::Token;
 use super::Interpreter;
 
+pub mod assignment;
+pub mod print;
+
 impl Interpreter {
-    /// Evaluate an arithmetic expression over a slice of tokens. Supports +, -, *, /, variables, and numbers.
-    pub fn eval_expression(&self, tokens: &[Token]) -> String {
-        // If the whole expression is a single string literal, return it
-        if tokens.len() == 1 {
-            if let Token::StringLiteral(s) = &tokens[0] {
-                return s.clone();
-            }
-        }
-        let mut acc = None;
-        let mut op: Option<char> = None;
-        let mut idx = 0;
-        while idx < tokens.len() {
-            match &tokens[idx] {
-                Token::Whitespace => { idx += 1; },
-                Token::Identifier(v) => {
-                    let val = *self.variables.get(v).unwrap_or(&0.0);
-                    acc = Some(match (acc, op) {
-                        (None, _) => val,
-                        (Some(lhs), Some('+')) => lhs + val,
-                        (Some(lhs), Some('-')) => lhs - val,
-                        (Some(lhs), Some('*')) => lhs * val,
-                        (Some(lhs), Some('/')) => lhs / val,
-                        _ => val
-                    });
-                    op = None;
-                    idx += 1;
-                },
-                Token::Number(n) => {
-                    let val = n.parse::<f64>().unwrap_or(0.0);
-                    acc = Some(match (acc, op) {
-                        (None, _) => val,
-                        (Some(lhs), Some('+')) => lhs + val,
-                        (Some(lhs), Some('-')) => lhs - val,
-                        (Some(lhs), Some('*')) => lhs * val,
-                        (Some(lhs), Some('/')) => lhs / val,
-                        _ => val
-                    });
-                    op = None;
-                    idx += 1;
-                },
-                Token::Symbol(s) if *s == '+' || *s == '-' || *s == '*' || *s == '/' => {
-                    op = Some(*s);
-                    idx += 1;
-                },
-                _ => { idx += 1; }
-            }
-        }
-        if let Some(val) = acc {
-            val.to_string()
-        } else {
-            "0".to_string()
-        }
-    }
+
 
     /// Execute a single assignment or print statement from a slice
     pub fn interpret_one_statement(&mut self, tokens: &[Token]) {
+    // debug removed interpret_one_statement tokens: {:?}", tokens);
     // println!("interpret_one_statement: tokens = {:?}", tokens);
         let mut i = 0;
         while i < tokens.len() {
@@ -103,12 +55,7 @@ impl Interpreter {
                         if k < tokens.len() && matches!(&tokens[k], Token::Number(_)) {
                             let val = match &tokens[k] { Token::Number(n) => n.parse::<f64>().unwrap_or(0.0), _ => 0.0 };
                             self.variables.insert(var.clone(), val);
-                            // skip to next semicolon (if present)
-                            let mut l = k + 1;
-                            while l < tokens.len() && matches!(&tokens[l], Token::Whitespace) { l += 1; }
-                            if l < tokens.len() && matches!(&tokens[l], Token::Symbol(';')) {
-                                // valid assignment, skip
-                            }
+                            // skip to next semicolon (if present), but always execute assignment
                             return;
                         }
                         // Support: x = y + 1; or x = y + 1 + 2 - z, etc.
@@ -205,7 +152,7 @@ impl Interpreter {
                                 let mut output = String::new();
                                 for (idx, &(start, end)) in args.iter().enumerate() {
                                     if idx > 0 { output.push(' '); }
-                                    let val = self.eval_expression(&tokens[start..end]);
+                                    let val = assignment::eval_expression(self,&tokens[start..end]);
                                     output.push_str(&val);
                                 }
                                 println!("{}", output);
@@ -216,6 +163,104 @@ impl Interpreter {
                     i += 1;
                 }
                 Token::Whitespace => { i += 1; }
+                Token::Keyword(k) if k == "if" => {
+                    // Scan ahead to include the full if/else if/else chain
+                    let mut end = i + 1;
+                    // Find condition (...)
+                    while end < tokens.len() && matches!(&tokens[end], Token::Whitespace) { end += 1; }
+                    if end < tokens.len() && matches!(&tokens[end], Token::Symbol('(')) {
+                        let mut paren_count = 1;
+                        end += 1;
+                        while end < tokens.len() && paren_count > 0 {
+                            match &tokens[end] {
+                                Token::Symbol('(') => paren_count += 1,
+                                Token::Symbol(')') => paren_count -= 1,
+                                _ => {}
+                            }
+                            end += 1;
+                        }
+                        // Find block {...}
+                        while end < tokens.len() && matches!(&tokens[end], Token::Whitespace) { end += 1; }
+                        if end < tokens.len() && matches!(&tokens[end], Token::Symbol('{')) {
+                            let mut brace_count = 1;
+                            end += 1;
+                            while end < tokens.len() && brace_count > 0 {
+                                match &tokens[end] {
+                                    Token::Symbol('{') => brace_count += 1,
+                                    Token::Symbol('}') => brace_count -= 1,
+                                    _ => {}
+                                }
+                                end += 1;
+                            }
+                        }
+                        // Check for else/else if chains
+                        loop {
+                            let mut after = end;
+                            while after < tokens.len() && matches!(&tokens[after], Token::Whitespace) { after += 1; }
+                            if after < tokens.len() && matches!(&tokens[after], Token::Keyword(k) if k == "else") {
+                                end = after + 1;
+                                while end < tokens.len() && matches!(&tokens[end], Token::Whitespace) { end += 1; }
+                                if end < tokens.len() && matches!(&tokens[end], Token::Keyword(k) if k == "if") {
+                                    // else if (...)
+                                    let mut paren_count = 1;
+                                    let mut tmp = end + 1;
+                                    while tmp < tokens.len() && matches!(&tokens[tmp], Token::Whitespace) { tmp += 1; }
+                                    if tmp < tokens.len() && matches!(&tokens[tmp], Token::Symbol('(')) {
+                                        tmp += 1;
+                                        while tmp < tokens.len() && paren_count > 0 {
+                                            match &tokens[tmp] {
+                                                Token::Symbol('(') => paren_count += 1,
+                                                Token::Symbol(')') => paren_count -= 1,
+                                                _ => {}
+                                            }
+                                            tmp += 1;
+                                        }
+                                    }
+                                    while tmp < tokens.len() && matches!(&tokens[tmp], Token::Whitespace) { tmp += 1; }
+                                    if tmp < tokens.len() && matches!(&tokens[tmp], Token::Symbol('{')) {
+                                        let mut brace_count = 1;
+                                        tmp += 1;
+                                        while tmp < tokens.len() && brace_count > 0 {
+                                            match &tokens[tmp] {
+                                                Token::Symbol('{') => brace_count += 1,
+                                                Token::Symbol('}') => brace_count -= 1,
+                                                _ => {}
+                                            }
+                                            tmp += 1;
+                                        }
+                                    }
+                                    end = tmp;
+                                    continue; // look for more else/else if
+                                } else if end < tokens.len() && matches!(&tokens[end], Token::Symbol('{')) {
+                                    // else {...}
+                                    let mut brace_count = 1;
+                                    end += 1;
+                                    while end < tokens.len() && brace_count > 0 {
+                                        match &tokens[end] {
+                                            Token::Symbol('{') => brace_count += 1,
+                                            Token::Symbol('}') => brace_count -= 1,
+                                            _ => {}
+                                        }
+                                        end += 1;
+                                    }
+                                    break; // only one else allowed at end
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    self.interpret_if_else(&tokens[i..end], &mut 0);
+                    i = end;
+                    return;
+                }
+                Token::Keyword(k) if k == "else" => {
+                    // 'else' is handled as part of 'if', so just skip
+                    i += 1;
+                    return;
+                }
                 _ => {
                     if i < tokens.len() {
                         let token = &tokens[i];
@@ -239,4 +284,5 @@ impl Interpreter {
             }
         }
     }
+// End of impl Interpreter
 }

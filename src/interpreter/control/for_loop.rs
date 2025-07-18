@@ -95,7 +95,119 @@ impl Interpreter {
                             // Loop
                             while self.eval_condition(cond_tokens) {
                                 let block_tokens = &tokens[block_start + 1..block_end];
-                                self.interpret(block_tokens);
+                                // Custom statement splitter: treat if/else as one statement
+                                let mut k = 0;
+                                while k < block_tokens.len() {
+                                    // Skip whitespace
+                                    while k < block_tokens.len() && matches!(&block_tokens[k], Token::Whitespace) { k += 1; }
+                                    if k >= block_tokens.len() { break; }
+                                    let start = k;
+                                    let mut end = k + 1;
+                                    // If statement: scan for full if/else chain
+                                    if matches!(&block_tokens[start], Token::Keyword(s) if s == "if") {
+                                        // Find condition (...)
+                                        while end < block_tokens.len() && matches!(&block_tokens[end], Token::Whitespace) { end += 1; }
+                                        if end < block_tokens.len() && matches!(&block_tokens[end], Token::Symbol('(')) {
+                                            let mut paren_count = 1;
+                                            end += 1;
+                                            while end < block_tokens.len() && paren_count > 0 {
+                                                match &block_tokens[end] {
+                                                    Token::Symbol('(') => paren_count += 1,
+                                                    Token::Symbol(')') => paren_count -= 1,
+                                                    _ => {}
+                                                }
+                                                end += 1;
+                                            }
+                                            // Find block {...}
+                                            while end < block_tokens.len() && matches!(&block_tokens[end], Token::Whitespace) { end += 1; }
+                                            if end < block_tokens.len() && matches!(&block_tokens[end], Token::Symbol('{')) {
+                                                let mut brace_count = 1;
+                                                end += 1;
+                                                while end < block_tokens.len() && brace_count > 0 {
+                                                    match &block_tokens[end] {
+                                                        Token::Symbol('{') => brace_count += 1,
+                                                        Token::Symbol('}') => brace_count -= 1,
+                                                        _ => {}
+                                                    }
+                                                    end += 1;
+                                                }
+                                            }
+                                            // else/else if chains
+                                            loop {
+                                                let mut after = end;
+                                                while after < block_tokens.len() && matches!(&block_tokens[after], Token::Whitespace) { after += 1; }
+                                                if after < block_tokens.len() && matches!(&block_tokens[after], Token::Keyword(s) if s == "else") {
+                                                    end = after + 1;
+                                                    while end < block_tokens.len() && matches!(&block_tokens[end], Token::Whitespace) { end += 1; }
+                                                    if end < block_tokens.len() && matches!(&block_tokens[end], Token::Keyword(s) if s == "if") {
+                                                        // else if (...)
+                                                        let mut paren_count = 1;
+                                                        let mut tmp = end + 1;
+                                                        while tmp < block_tokens.len() && matches!(&block_tokens[tmp], Token::Whitespace) { tmp += 1; }
+                                                        if tmp < block_tokens.len() && matches!(&block_tokens[tmp], Token::Symbol('(')) {
+                                                            tmp += 1;
+                                                            while tmp < block_tokens.len() && paren_count > 0 {
+                                                                match &block_tokens[tmp] {
+                                                                    Token::Symbol('(') => paren_count += 1,
+                                                                    Token::Symbol(')') => paren_count -= 1,
+                                                                    _ => {}
+                                                                }
+                                                                tmp += 1;
+                                                            }
+                                                        }
+                                                        while tmp < block_tokens.len() && matches!(&block_tokens[tmp], Token::Whitespace) { tmp += 1; }
+                                                        if tmp < block_tokens.len() && matches!(&block_tokens[tmp], Token::Symbol('{')) {
+                                                            let mut brace_count = 1;
+                                                            tmp += 1;
+                                                            while tmp < block_tokens.len() && brace_count > 0 {
+                                                                match &block_tokens[tmp] {
+                                                                    Token::Symbol('{') => brace_count += 1,
+                                                                    Token::Symbol('}') => brace_count -= 1,
+                                                                    _ => {}
+                                                                }
+                                                                tmp += 1;
+                                                            }
+                                                        }
+                                                        end = tmp;
+                                                        continue;
+                                                    } else if end < block_tokens.len() && matches!(&block_tokens[end], Token::Symbol('{')) {
+                                                        let mut brace_count = 1;
+                                                        end += 1;
+                                                        while end < block_tokens.len() && brace_count > 0 {
+                                                            match &block_tokens[end] {
+                                                                Token::Symbol('{') => brace_count += 1,
+                                                                Token::Symbol('}') => brace_count -= 1,
+                                                                _ => {}
+                                                            }
+                                                            end += 1;
+                                                        }
+                                                        break;
+                                                    } else {
+                                                        break;
+                                                    }
+                                                } else {
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Not an if: scan to next ; or top-level }
+                                        let mut in_block = 0;
+                                        while end < block_tokens.len() {
+                                            match &block_tokens[end] {
+                                                Token::Symbol('{') => in_block += 1,
+                                                Token::Symbol('}') => if in_block == 0 { break; } else { in_block -= 1; },
+                                                Token::Symbol(';') => if in_block == 0 { end += 1; break; },
+                                                _ => {}
+                                            }
+                                            end += 1;
+                                        }
+                                    }
+                                    if end > start {
+                                        self.interpret_one_statement(&block_tokens[start..end]);
+                                    }
+                                    k = end;
+                                }
                                 self.interpret_one_statement(update_tokens);
                             }
                             *i = block_end + 1;

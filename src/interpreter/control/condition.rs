@@ -23,11 +23,22 @@ impl Interpreter {
             Some(Token::Number(num)) => num.parse().unwrap_or(0.0),
             _ => 0.0
         };
+        // Debug print
+        
         match op {
             Some(Token::Symbol('<')) => left_val < right_val,
             Some(Token::Symbol('>')) => left_val > right_val,
             Some(Token::Symbol('=')) => {
                 if let Some(Token::Symbol('=')) = tokens.get(j+1) {
+                    // skip whitespace after ==
+                    let mut k = j + 2;
+                    while k < tokens.len() && matches!(&tokens[k], Token::Whitespace) { k += 1; }
+                    let right = tokens.get(k);
+                    let right_val = match right {
+                        Some(Token::Identifier(var)) => self.variables.get(var).copied().unwrap_or(0.0),
+                        Some(Token::Number(num)) => num.parse().unwrap_or(0.0),
+                        _ => 0.0
+                    };
                     left_val == right_val
                 } else {
                     false
@@ -35,6 +46,15 @@ impl Interpreter {
             }
             Some(Token::Symbol('!')) => {
                 if let Some(Token::Symbol('=')) = tokens.get(j+1) {
+                    // skip whitespace after !=
+                    let mut k = j + 2;
+                    while k < tokens.len() && matches!(&tokens[k], Token::Whitespace) { k += 1; }
+                    let right = tokens.get(k);
+                    let right_val = match right {
+                        Some(Token::Identifier(var)) => self.variables.get(var).copied().unwrap_or(0.0),
+                        Some(Token::Number(num)) => num.parse().unwrap_or(0.0),
+                        _ => 0.0
+                    };
                     left_val != right_val
                 } else {
                     false
