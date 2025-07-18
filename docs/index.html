@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fork Interpreter Documentation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Fork Interpreter Documentation</h1>
+        <p>A Rust-based interpreter supporting custom control flow and statement logic.</p>
+    </header>
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#structure">Directory Structure</a></li>
+            <li><a href="#logic">Interpreter Logic</a></li>
+            <li><a href="#usage">Usage</a></li>
+            <li><a href="#contributing">Contributing</a></li>
+        </ul>
+    </nav>
+    <main>
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>This project implements a custom interpreter in Rust. It features a lexer, parser, optimizer, semantic analyzer, and an interpreter capable of handling control flow constructs such as <code>for</code>, <code>while</code>, <code>if/else</code> as well as statement logic (assignment, print, etc.).</p>
+        </section>
+        <section id="structure">
+            <h2>Directory & File Structure</h2>
+            <ul>
+                <li><strong>src/</strong>
+                    <ul>
+                        <li><strong>main.rs</strong>: Entry point for the interpreter.</li>
+                        <li><strong>lexer.rs</strong>: Tokenizes source code input.</li>
+                        <li><strong>parser.rs</strong>: Parses tokens into an AST or interpretable structure.</li>
+                        <li><strong>token.rs</strong>: Defines token types used by the lexer and parser.</li>
+                        <li><strong>optimizer.rs</strong>: Performs code optimizations (if any).</li>
+                        <li><strong>semantic.rs</strong>: Handles semantic analysis.</li>
+                        <li><strong>codegen.rs</strong>: (Optional) Code generation logic.</li>
+                        <li><strong>icg.rs</strong>: (Optional) Intermediate code generation logic.</li>
+                        <li><strong>test.fork</strong>: Example/test source file for the interpreter.</li>
+                        <li><strong>interpreter/</strong>
+                            <ul>
+                                <li><strong>context.rs</strong>: Interpreter context and state.</li>
+                                <li><strong>control/</strong>
+                                    <ul>
+                                        <li><strong>for_loop.rs</strong>: Implements <code>for</code> loop logic.</li>
+                                        <li><strong>while_loop.rs</strong>: Implements <code>while</code> loop logic.</li>
+                                        <li><strong>if_else.rs</strong>: Implements <code>if/else</code> logic.</li>
+                                        <li><strong>condition.rs</strong>: Evaluates boolean conditions.</li>
+                                        <li><strong>loops.rs</strong>: Main interpreter loop dispatcher.</li>
+                                        <li><strong>mod.rs</strong>: Module declarations for control logic.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>statement/</strong>
+                                    <ul>
+                                        <li><strong>assignment.rs</strong>: Assignment statement logic.</li>
+                                        <li><strong>print.rs</strong>: Print statement logic.</li>
+                                        <li><strong>mod.rs</strong>: Statement dispatcher and handler.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>mod.rs</strong>: Module declarations for interpreter logic.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </section>
+        <section id="logic">
+            <h2>Interpreter Logic</h2>
+            <h3>How It Works</h3>
+            <p>This section provides a detailed, step-by-step explanation of the interpreter's logic for each major construct, including real code snippets and example scenarios.</p>
+
+            <h4>For Loop Logic</h4>
+            <p><strong>File:</strong> <code>src/interpreter/control/for_loop.rs</code></p>
+            <p>The interpreter processes <code>for</code> loops by:</p>
+            <ol>
+                <li>Identifying the <code>for</code> keyword, then parsing the header inside parentheses <code>(init; cond; update)</code>.</li>
+                <li>Splitting the header into three parts: initialization, condition, and update. Each part is tokenized and interpreted separately.</li>
+                <li>Executing the initialization statement once before the loop starts.</li>
+                <li>Checking the condition before each iteration using <code>eval_condition</code>. If true, the block is executed; otherwise, the loop ends.</li>
+                <li>After the block executes, the update statement is run, and the condition is checked again.</li>
+                <li>The interpreter handles syntax errors, such as missing semicolons or unsupported variable declarations in the header, by emitting descriptive error messages and skipping the malformed loop.</li>
+            </ol>
+            <pre><code>pub fn interpret_for_loop(&mut self, tokens: &[Token], i: &mut usize) {
+    // Parse for (init; cond; update) { block }
+    // Split header by ';', check for errors
+    // Execute init
+    // while condition is true:
+    //     execute block
+    //     execute update
+}
+// Example: for (i = 0; i < 10; i++) { print(i); }
+</code></pre>
+
+            <h4>While Loop Logic</h4>
+            <p><strong>File:</strong> <code>src/interpreter/control/while_loop.rs</code></p>
+            <p>The interpreter processes <code>while</code> loops by:</p>
+            <ol>
+                <li>Identifying the <code>while</code> keyword and parsing the condition inside parentheses.</li>
+                <li>Locating the block to execute, delimited by braces <code>{...}</code>.</li>
+                <li>Using <code>eval_condition</code> to evaluate the loop condition.</li>
+                <li>As long as the condition is true, the interpreter executes the block, then re-evaluates the condition.</li>
+                <li>Handles syntax errors such as missing parentheses or braces by skipping the malformed loop.</li>
+            </ol>
+            <pre><code>pub fn interpret_while_loop(&mut self, tokens: &[Token], i: &mut usize) {
+    // Parse condition in (...)
+    // Parse block in {...}
+    while self.eval_condition(condition_tokens) {
+        self.interpret(block_tokens);
+    }
+}
+// Example: while (x > 0) { print(x); x = x - 1; }
+</code></pre>
+
+            <h4>If / Else Logic</h4>
+            <p><strong>File:</strong> <code>src/interpreter/control/if_else.rs</code></p>
+            <p>The interpreter processes <code>if</code> and <code>else</code> branches by:</p>
+            <ol>
+                <li>Identifying the <code>if</code> keyword and parsing the condition in parentheses.</li>
+                <li>Evaluating the condition with <code>eval_condition</code>.</li>
+                <li>If true, the block after <code>if</code> is executed.</li>
+                <li>If false, the interpreter checks for an <code>else if</code> or <code>else</code> keyword immediately following, and processes those blocks recursively as needed.</li>
+                <li>Handles nested or chained <code>if/else</code> statements and skips malformed blocks with error messages.</li>
+            </ol>
+            <pre><code>pub fn interpret_if_else(&mut self, tokens: &[Token], i: &mut usize) {
+    // Parse condition
+    // If true, run block
+    // Else, check for else if / else and run those blocks
+}
+// Example: if (x == 0) { print("zero"); } else { print("not zero"); }
+</code></pre>
+
+            <h4>Condition Evaluation</h4>
+            <p><strong>File:</strong> <code>src/interpreter/control/condition.rs</code></p>
+            <p>Conditions are evaluated by extracting the left operand, operator, and right operand from the token stream. The interpreter supports <code>&lt;</code>, <code>&gt;</code>, <code>==</code>, and <code>!=</code> for numeric and variable comparisons. The logic is as follows:</p>
+            <ol>
+                <li>Skip whitespace to find the left operand (variable or number).</li>
+                <li>Skip whitespace to find the operator (<code>&lt;</code>, <code>&gt;</code>, <code>==</code>, <code>!=</code>).</li>
+                <li>Skip whitespace to find the right operand.</li>
+                <li>Look up variable values or parse numbers as needed.</li>
+                <li>Return the boolean result of the comparison.</li>
+            </ol>
+            <pre><code>pub fn eval_condition(&self, tokens: &[Token]) -> bool {
+    // let left = ...;
+    // let op = ...;
+    // let right = ...;
+    // match op {
+    //     '<' => left < right,
+    //     '>' => left > right,
+    //     '==' => left == right,
+    //     '!=' => left != right,
+    //     _ => false
+    // }
+}
+// Example: if (a != b) { ... }
+</code></pre>
+
+            <h4>Assignment Logic</h4>
+            <p><strong>File:</strong> <code>src/interpreter/statement/mod.rs</code></p>
+            <p>Assignments are handled by detecting an identifier followed by <code>=</code> and an expression. The interpreter supports direct assignment, as well as increment (<code>++</code>) and decrement (<code>--</code>) operations. The right-hand side can be a number, variable, or arithmetic expression.</p>
+            <ol>
+                <li>Detect an identifier followed by <code>=</code>.</li>
+                <li>Skip whitespace and parse the right-hand expression, which may include variables, numbers, and operators.</li>
+                <li>Evaluate the expression left-to-right, supporting <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>.</li>
+                <li>Store the result in the variable table.</li>
+                <li>For <code>i++</code> or <code>i--</code>, increment or decrement the variable value directly.</li>
+                <li>If the variable does not exist, an error is reported for increment/decrement.</li>
+            </ol>
+            <pre><code>pub fn interpret_one_statement(&mut self, tokens: &[Token]) {
+    // ...
+    // Assignment: x = 1; x = y + 2; x++;
+    // For x = y + 2, parses and evaluates y + 2, stores in x
+    // For x++, increments x
+}
+// Example: x = 5; y = x + 3; x++;
+</code></pre>
+
+            <h4>Print Logic</h4>
+            <p><strong>Files:</strong> <code>src/interpreter/statement/mod.rs</code>, <code>src/interpreter/statement/assignment.rs</code></p>
+            <p>The <code>print</code> statement is handled by detecting the <code>print</code> keyword, parsing the argument list inside parentheses, and evaluating each argument as an expression. The logic is:</p>
+            <ol>
+                <li>Detect the <code>print</code> keyword followed by <code>(</code>.</li>
+                <li>For each argument (separated by commas), parse and evaluate the expression using <code>eval_expression</code> from <code>assignment.rs</code>. This supports variables, numbers, arithmetic, and string literals.</li>
+                <li>Concatenate the results of all arguments, separated by spaces.</li>
+                <li>Output the final string to the console.</li>
+                <li>Handles errors such as missing parentheses or unsupported argument types with error messages.</li>
+            </ol>
+            <pre><code>pub fn interpret_one_statement(&mut self, tokens: &[Token]) {
+    // ...
+    // Print: print(x), print(x + 1, "done")
+    // For each argument, evaluates using assignment::eval_expression
+    // Prints the concatenated result
+}
+
+// Example: print("Result:", x + 2)
+
+// Expression evaluation (from assignment.rs):
+pub fn eval_expression(interp: &Interpreter, tokens: &[Token]) -> String {
+    // If single string literal, return it
+    // Otherwise, parse and evaluate left-to-right with +, -, *, /
+    // Returns the result as a string
+}
+</code></pre>
+
+            <h3>Tokenization & Parsing</h3>
+            <ul>
+                <li><strong>Lexer</strong>: Converts source code into tokens.</li>
+                <li><strong>Parser</strong>: Converts tokens into statements and expressions for interpretation.</li>
+            </ul>
+        </section>
+        <section id="usage">
+            <h2>Usage</h2>
+            <ol>
+                <li>Clone the repository and navigate to the project root.</li>
+                <li>Build the project with <code>cargo build</code>.</li>
+                <li>Run the interpreter with <code>cargo run -- src/test.fork</code> (or your own source file).</li>
+            </ol>
+        </section>
+        <section id="contributing">
+            <h2>Contributing</h2>
+            <ul>
+                <li>Fork the repository and create a new branch for your feature or bugfix.</li>
+                <li>Write clear code and update/add documentation as needed.</li>
+                <li>Submit a pull request with a clear description of your changes.</li>
+            </ul>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2025 Fork Interpreter Project. All rights reserved.</p>
+    </footer>
+</body>
+</html>
